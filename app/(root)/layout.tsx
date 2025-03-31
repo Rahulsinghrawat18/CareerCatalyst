@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ReactNode } from "react";
+import SignOutButton from "../components/SignOutButton";
 
 const RootLayout = async ({ children }: { children: ReactNode }) => {
   const isUserAuthenticated = await isAuthenticated();
@@ -10,6 +11,10 @@ const RootLayout = async ({ children }: { children: ReactNode }) => {
   if(!isUserAuthenticated) redirect('/sign-in');
 
   return (
+    <>
+    <div className="">
+    <SignOutButton />
+    </div>
     <div className="root-layout">
       <nav>
         <Link href="/" className="flex items-center gap-2">
@@ -19,6 +24,7 @@ const RootLayout = async ({ children }: { children: ReactNode }) => {
       </nav>
       {children}
     </div>
+    </>
   );
 };
 
