@@ -11,16 +11,34 @@ import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
 import FormField from "./FormFeild";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import { signIn, signUp } from "@/lib/actions/auth.action";
 import { auth } from "@/firebase/client";
 //import { Input } from "@/components/ui/input";
 
 const authFormSchema = (type: FormType) => {
   return z.object({
-    name: type === "sign-up" ? z.string().min(3) : z.string().optional(),
+    name:
+      type === "sign-up"
+        ? z
+            .string()
+            .min(3, { message: "Name must be at least 3 characters long." })
+            .nonempty({ message: "Name is required." })
+        : z.string().optional(),
     email: z.string().email(),
-    password: z.string().min(3),
+    password: z
+      .string()
+      .min(5, { message: "Password must be at least 5 characters long." })
+      .regex(/[@#$%^&*!]/, {
+        message:
+          "Password must include at least one special character (@, #, $, %, etc.).",
+      })
+      .regex(/[0-9]/, {
+        message: "Password must include at least one digit (0-9).",
+      }),
   });
 };
 
@@ -43,8 +61,10 @@ const AuthForm = ({ type }: { type: FormType }) => {
       if (type === "sign-up") {
         const { name, email, password } = values;
 
-        const userCredential = await createUserWithEmailAndPassword(auth, 
-          email, password
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
         );
 
         const result = await signUp({
@@ -52,42 +72,44 @@ const AuthForm = ({ type }: { type: FormType }) => {
           name: name!,
           email,
           password,
-        })
+        });
 
-        if(!result?.success) {
+        if (!result?.success) {
           toast.error(result?.message);
           return;
         }
 
-        toast.success('Account created successfully. Please sign in');
-        router.push('/sign-in')
+        toast.success("Account created successfully. Please sign in");
+        router.push("/sign-in");
       } else {
-
         const { email, password } = values;
 
-        const userCredential = await signInWithEmailAndPassword(auth, 
-          email, password
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
         );
 
         const idToken = await userCredential.user.getIdToken();
 
-        if(!idToken) {
-          toast.error('Sign in failed')
+        if (!idToken) {
+          toast.error("Sign in failed");
           return;
         }
 
         await signIn({
-          email, idToken
-        })
-        
-        toast.success('Signed in successfully.');
-        router.push('/')
+          email,
+          idToken,
+        });
+
+        toast.success("Signed in successfully.");
+        router.push("/");
       }
     } catch (error) {
       console.log(error);
       toast.error(`There was an error: ${error}`);
     }
-  }
+  };
 
   const isSignIn = type === "sign-in";
 
@@ -106,13 +128,21 @@ const AuthForm = ({ type }: { type: FormType }) => {
             className="space-y-8 w-full mt-4 form"
           >
             {!isSignIn && (
-              <FormField
-                control={form.control}
-                name="name"
-                label="Name"
-                placeholder="Your Name"
-              />
+              <>
+                <FormField
+                  control={form.control}
+                  name="name"
+                  label="Name"
+                  placeholder="Your Name"
+                />
+                {form.formState.errors.name && (
+                  <div className="text-sm text-red-500">
+                    {form.formState.errors.name?.message}
+                  </div>
+                )}
+              </>
             )}
+
             <FormField
               control={form.control}
               name="email"
@@ -128,6 +158,29 @@ const AuthForm = ({ type }: { type: FormType }) => {
               placeholder="Enter your password"
               type="password"
             />
+
+            {form.formState.errors.password && (
+              <div className="text-sm text-red-500 space-y-1">
+                {Array.isArray(form.formState.errors.password.types) ? (
+                  form.formState.errors.password.types.map((error, index) => (
+                    <p key={index}>{error}</p>
+                  ))
+                ) : (
+                  <p>{form.formState.errors.password?.message}</p>
+                )}
+              </div>
+            )}
+
+            {isSignIn && (
+              <p className="text-center text-sm text-gray-500">
+                <Link
+                  href="/forgot-password"
+                  className="text-blue-500 hover:underline"
+                >
+                  Forgot Password?
+                </Link>
+              </p>
+            )}
 
             <Button className="btn" type="submit">
               {isSignIn ? "Sign in" : "Create an Account"}
